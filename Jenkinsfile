@@ -13,7 +13,7 @@ pipeline {
 
     stages {
 
-        stage('Terraform') {
+        stage('Terraform Init') {
             steps {
                 script {
                     def envName = params.ENVIRONMENT
@@ -23,9 +23,33 @@ pipeline {
                     sh '''
                         terraform version
                         terraform init
-                        terraform apply -auto-approve
                     '''
                 }
+            }
+        }
+
+        stage('Terraform Plan') {
+            steps {
+                sh '''
+                    terraform plan
+                '''
+            }
+        }
+
+        stage('Approval') {
+            steps {
+                input(
+                    message: "Do you want to apply Terraform changes for ${params.ENVIRONMENT}?",
+                    ok: 'Apply'
+                )
+            }
+        }
+
+        stage('Terraform Apply') {
+            steps {
+                sh '''
+                    terraform apply -auto-approve
+                '''
             }
         }
 
