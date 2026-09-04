@@ -14,12 +14,24 @@ pipeline {
     stages {
 
         stage('Terraform Init') {
+            agent {
+                docker {
+                    image 'hashicorp/terraform:latest'
+                    args '--entrypoint="" --user 0'
+                    reuseNode true
+                }
+            }
+
             steps {
-                script {
-                    def envName = params.ENVIRONMENT
+                echo "Selected Environment: ${params.ENVIRONMENT}"
 
-                    echo "Selected Environment: ${envName}"
-
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'aws-credentials',
+                        usernameVariable: 'AWS_ACCESS_KEY_ID',
+                        passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                    )
+                ]) {
                     sh '''
                         terraform version
                         terraform init
@@ -29,35 +41,77 @@ pipeline {
         }
 
         stage('Terraform Plan') {
+            agent {
+                docker {
+                    image 'hashicorp/terraform:latest'
+                    args '--entrypoint="" --user 0'
+                    reuseNode true
+                }
+            }
+
             steps {
-                sh '''
-                    terraform plan
-                '''
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'aws-credentials',
+                        usernameVariable: 'AWS_ACCESS_KEY_ID',
+                        passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                    )
+                ]) {
+                    sh 'terraform plan'
+                }
             }
         }
 
         stage('Approval') {
             steps {
                 input(
-                    message: "Do you want to apply Terraform changes for ${params.ENVIRONMENT}?",
-                    ok: 'Apply'
+                    message: "Do you want to APPLY Terraform changes for ${params.ENVIRONMENT}?",
+                    ok: 'Proceed'
                 )
             }
         }
 
         stage('Terraform Apply') {
+            agent {
+                docker {
+                    image 'hashicorp/terraform:latest'
+                    args '--entrypoint="" --user 0'
+                    reuseNode true
+                }
+            }
+
             steps {
-                sh '''
-                    terraform apply -auto-approve
-                '''
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'aws-credentials',
+                        usernameVariable: 'AWS_ACCESS_KEY_ID',
+                        passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                    )
+                ]) {
+                    sh 'terraform apply -auto-approve'
+                }
             }
         }
 
-        stage('Output') {
+        stage('Terraform Output') {
+            agent {
+                docker {
+                    image 'hashicorp/terraform:latest'
+                    args '--entrypoint="" --user 0'
+                    reuseNode true
+                }
+            }
+
             steps {
-                sh '''
-                    terraform output
-                '''
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'aws-credentials',
+                        usernameVariable: 'AWS_ACCESS_KEY_ID',
+                        passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                    )
+                ]) {
+                    sh 'terraform output'
+                }
             }
         }
     }
